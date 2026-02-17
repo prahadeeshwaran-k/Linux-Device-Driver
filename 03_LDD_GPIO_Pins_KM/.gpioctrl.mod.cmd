@@ -1,0 +1,1 @@
+savedcmd_/home/prahadeesh/LinuxDriver/03_LDD_GPIO_Pins_KM/gpioctrl.mod := printf '%s\n'   gpioctrl.o | awk '!x[$$0]++ { print("/home/prahadeesh/LinuxDriver/03_LDD_GPIO_Pins_KM/"$$0) }' > /home/prahadeesh/LinuxDriver/03_LDD_GPIO_Pins_KM/gpioctrl.mod

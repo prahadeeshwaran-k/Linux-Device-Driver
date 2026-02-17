@@ -1,0 +1,1 @@
+savedcmd_/home/prahadeesh/LinuxDriver/05_LDD_CharDevice/Module.symvers :=  scripts/mod/modpost -M -m -a      -o /home/prahadeesh/LinuxDriver/05_LDD_CharDevice/Module.symvers -n -T /home/prahadeesh/LinuxDriver/05_LDD_CharDevice/modules.order -i Module.symvers -e 
