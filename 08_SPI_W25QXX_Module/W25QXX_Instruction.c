@@ -1,18 +1,22 @@
+#include <linux/kernel.h>
+#include <linux/spi/spi.h>
+#include <linux/delay.h>
+
 #include "W25QXX_Instruction.h"
 
-int w25q_send_cmd(struct_device *spi, u8 opcode)
+int w25q_send_cmd(struct spi_device *spi, u8 opcode)
 {
-	struct spi_transfer spi_txInfo = {
-		.tx_buf = &opcode,
-		.len = 1,
-	}
+    struct spi_transfer t = {
+        .tx_buf = &opcode,
+        .len = 1,
+    };
 
-	struct spi_message spi_DataBuffer;
+    struct spi_message m;
 
-	spi_message_init(&spi_DataBuffer);
-	spi_message_add_tail(&spi_txInfo, &spi_DataBuffer);
+    spi_message_init(&m);
+    spi_message_add_tail(&t, &m);
 
-	return spi_sync(spi, &spi_DataBuffer);
+    return spi_sync(spi, &m);
 }
 
 /*
@@ -41,16 +45,23 @@ int w25q_send_cmd(struct_device *spi, u8 opcode)
 
 int w25q_reset(struct spi_device *spi)
 {
-	int ret;
-	ret = wq25_send_cmd(spi, 0x066)// Enable reset
-	if(ret)
-		return ret;
-	
-	ret = wq25_send_cmd(spi, 0x099)// Reset
-    usleep_range(30, 40); /* tRST = 30 us minimum */
-	if(ret)
-		return ret;
+    int ret;
+
+    /* Enable reset (0x66) */
+    ret = w25q_send_cmd(spi, 0x66);
+    if (ret)
+        return ret;
+
+    /* Reset device (0x99) */
+    ret = w25q_send_cmd(spi, 0x99);
+    if (ret)
+        return ret;
+
+    usleep_range(30, 40);
+
+    return 0;
 }
+
 
 /*
  * 8.2.29 Read JEDEC ID (0x9F)
@@ -71,34 +82,53 @@ int w25q_reset(struct spi_device *spi)
  * for memory type and capacity values.
  */
 
-u32 w25q_read_id(struct spi_device *spi)
+int w25q_read_id(struct spi_device *spi)
 {
     u8 cmd = READ_ID;
-    u8 id[3];
-    struct spi_transfer spi_txInfo = {
-        .tx_buf = &cmd,
-        .len = 1,
-    }
+    u8 id[3] = {0};
 
-    struct spi_transfer spi_rxInfo = {
-        .rx_buf = id,
-        .len = 3,
-    }
+    struct spi_transfer xfers[] = {
+        {
+            .tx_buf = &cmd,
+            .len = 1,
+        },
+        {
+            .rx_buf = id,
+            .len = 3,
+        },
+    };
 
-    struct spi_message spi_DataBuffer;
+    struct spi_message m;
 
-    spi_message_init(&spi_DataBuffer);
-    spi_message_add_tail(&spi_txInfo, &spi_DataBuffer);
-    spi_message_add_tail(&spi_rxInfo, &spi_DataBuffer);
+    spi_message_init(&m);
+    spi_message_add_tail(&xfers[0], &m);
+    spi_message_add_tail(&xfers[1], &m);
 
-    spi_sync(spi, &spi_DataBuffer);
+    spi_sync(spi, &m);
 
     return (id[0] << 16) | (id[1] << 8) | id[2];
 }
 
-u8 w25q_init(struct spi_device *spi)
+int w25q_init(struct spi_device *spi)
 {
-    w25q_reset();
-    w25q_read_id(spi);
+    int id;
+
+    w25q_reset(spi);
+
+    id = w25q_read_id(spi);
+
+    pr_info("W25Q ID       : 0x%02X\n", id & 0xFF);
+    pr_info("W25Q Type     : 0x%02X\n", (id >> 8) & 0xFF);
+    pr_info("W25Q Capacity : 0x%02X\n", (id >> 16) & 0xFF);
+
     return 0;
 }
+
+/*
+ * Pull CS LOW
+ * Send READ command (0x03)
+ * Send 24-bit address
+ * Read data bytes
+ * Pull CS HIGH
+ * w25q_read_id()
+ */

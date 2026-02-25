@@ -1,0 +1,1 @@
+savedcmd_/home/prahadeesh/Linux-Device-Driver/08_SPI_W25QXX_Module/spi.mod := printf '%s\n'   spi.o | awk '!x[$$0]++ { print("/home/prahadeesh/Linux-Device-Driver/08_SPI_W25QXX_Module/"$$0) }' > /home/prahadeesh/Linux-Device-Driver/08_SPI_W25QXX_Module/spi.mod

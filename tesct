@@ -1,0 +1,87 @@
+#include <linux/module.h>
+#include <linux/init.h>
+#include <linux/kernel.h>
+#include <linux/spi/spi.h>
+#include <linux/types.h>
+
+#include "W25QXX_Instruction.h"
+
+#define BUS_NUM 0
+
+static struct spi_device *w25qxx_dev;
+
+static int w25q_read(u32 addr, u8 *buffer, size_t len)
+{
+    u8 tx[4] = {
+        READ_DATA,
+        (u8)((addr >> 16) & 0xFF),
+        (u8)((addr >> 8) & 0xFF),
+        (u8)(addr & 0xFF),
+    };
+
+    return spi_write_then_read(w25qxx_dev, tx, sizeof(tx), buffer, len);
+}
+
+static int __init my_init(void)
+{
+    struct spi_master *master;
+    struct spi_board_info spi_device_info = {
+        .modalias = "w25qxx",
+        .max_speed_hz = 100000,
+        .bus_num = BUS_NUM,
+        .chip_select = 0,
+        .mode = SPI_MODE_3,
+    };
+    int ret;
+
+    master = spi_busnum_to_master(BUS_NUM);
+    if (!master) {
+        pr_err("SPI master not found on bus %d\n", BUS_NUM);
+        return -ENODEV;
+    }
+
+    w25qxx_dev = spi_new_device(master, &spi_device_info);
+    put_device(&master->dev);
+    if (!w25qxx_dev) {
+        pr_err("Failed to create SPI device\n");
+        return -ENODEV;
+    }
+
+    w25qxx_dev->bits_per_word = 8;
+
+    ret = spi_setup(w25qxx_dev);
+    if (ret) {
+        pr_err("Failed to setup SPI device: %d\n", ret);
+        spi_unregister_device(w25qxx_dev);
+        w25qxx_dev = NULL;
+        return ret;
+    }
+
+    ret = w25q_init(w25qxx_dev);
+    if (ret) {
+        pr_err("W25QXX init failed: %d\n", ret);
+        spi_unregister_device(w25qxx_dev);
+        w25qxx_dev = NULL;
+        return ret;
+    }
+
+    return 0;
+}
+
+static void __exit my_exit(void)
+{
+    if (w25qxx_dev) {
+        spi_unregister_device(w25qxx_dev);
+        w25qxx_dev = NULL;
+    }
+
+    pr_info("SPI W25QXX module unloaded\n");
+}
+
+module_init(my_init);
+module_exit(my_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Prahadeeshwaran");
+MODULE_DESCRIPTION("SPI W25QXX helper module");
+EOF
