@@ -1,0 +1,1 @@
+savedcmd_/home/prahadeesh/Linux-Device-Driver/11_Virtual_Device_Driver/vDevice.mod := printf '%s\n'   vDevice.o | awk '!x[$$0]++ { print("/home/prahadeesh/Linux-Device-Driver/11_Virtual_Device_Driver/"$$0) }' > /home/prahadeesh/Linux-Device-Driver/11_Virtual_Device_Driver/vDevice.mod
